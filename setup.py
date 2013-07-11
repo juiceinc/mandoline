@@ -14,5 +14,6 @@ setup(
     install_requires=[
         "boto >= 2.0",
         "openpyxl == 1.6.2",
+        "requests == 1.2.2",
     ],
 )

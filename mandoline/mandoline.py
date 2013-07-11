@@ -233,6 +233,9 @@ class MandolineCleaner():
 
         if fn is None:
             self.filename = self.filename + '.clean'
+        else:
+            self.filename = fn
+
         writer = DictUnicodeWriter(open(self.filename, 'w'), self.flds,
                                    extrasaction='ignore')
 
@@ -248,6 +251,8 @@ class MandolineCleaner():
 
         if fn is None:
             self.filename = self.filename + '.clean.json'
+        else:
+            self.filename = fn
 
         json.dump({"rows": self.rows}, open(self.filename, 'w'), indent=0)
         self.logger.info("Wrote json file %s" % (self.filename))
