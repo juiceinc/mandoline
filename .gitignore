@@ -1,0 +1,8 @@
+*.pyc
+*.csv
+*.xlsx
+*.clean
+*.json
+*.log
+dist/
+build/
