@@ -6,7 +6,7 @@ import json
 from requests import get as http_get, put as http_put
 
 from boto.s3.connection import S3Connection
-import os.environ
+import os
 
 from cleaners import *
 
