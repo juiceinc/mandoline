@@ -2,7 +2,7 @@ from distutils.core import setup
 
 setup(
     name='Mandoline',
-    version='0.1.0',
+    version='0.2.0',
     author='Chris Gemignani',
     author_email='chris.gemignani@juiceanalytics.com',
     packages=['mandoline',],
@@ -15,5 +15,6 @@ setup(
         "boto >= 2.0",
         "openpyxl == 1.6.2",
         "requests == 1.2.2",
+        "nose == 1.3.0",
     ],
 )
