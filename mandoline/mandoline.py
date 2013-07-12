@@ -54,6 +54,9 @@ class MandolineCleaner():
         self.logger = logging.getLogger("mandoline")
         self.rows = []
         self.inputrows = []
+        self.input_filename = None
+        self.output_filename = None
+
 
     # Tests
 
@@ -126,12 +129,12 @@ class MandolineCleaner():
         @return:
         """
         self._generate_field_metadata()
-        self.filename = f
+        self.input_filename = f
 
         from openpyxl import load_workbook
 
         self.logger.info("Loading as xlsx")
-        wb = load_workbook(self.filename)
+        wb = load_workbook(self.input_filename)
         sht = wb.get_sheet_by_name(wb.get_sheet_names()[0])
         header = sht.rows[0]
         rows = sht.rows[1:]
@@ -147,9 +150,9 @@ class MandolineCleaner():
 
         """
         self._generate_field_metadata()
-        self.filename = f
+        self.input_filename = f
 
-        reader = csv.DictReader(open(self.filename, 'r'))
+        reader = csv.DictReader(open(self.input_filename, 'r'))
         self.inputrows = list(reader)
         return self
 
@@ -232,30 +235,31 @@ class MandolineCleaner():
         self._requires_clean_rows()
 
         if fn is None:
-            self.filename = self.filename + '.clean'
+            self.output_filename = self.input_filename + '.clean'
         else:
-            self.filename = fn
+            self.output_filename = fn
 
-        writer = DictUnicodeWriter(open(self.filename, 'w'), self.flds,
+        writer = DictUnicodeWriter(open(self.output_filename, 'w'), self.flds,
                                    extrasaction='ignore')
 
         writer.writeheader()
         for row in self.rows:
             writer.writerow(row)
 
-        self.logger.info("Wrote csv file %s" % (self.filename))
+        self.logger.info("Wrote csv file %s" % (self.output_filename))
         return self
 
     def to_json(self, fn=None):
         self._requires_clean_rows()
 
         if fn is None:
-            self.filename = self.filename + '.clean.json'
+            self.output_filename = self.input_filename + '.clean.json'
         else:
-            self.filename = fn
+            path, _ = os.path.split(os.path.abspath(self.input_filename))
+            self.output_filename = os.path.join(path, fn)
 
-        json.dump({"rows": self.rows}, open(self.filename, 'w'), indent=0)
-        self.logger.info("Wrote json file %s" % (self.filename))
+        json.dump({"rows": self.rows}, open(self.output_filename, 'wb'), indent=0)
+        self.logger.info("Wrote json file %s" % (self.output_filename))
         return self
 
     def refine_fieldnames(self):
@@ -288,31 +292,33 @@ class MandolineCleaner():
         assert AWS_ACCESS_KEY_ID is not None, "Needs environment variable AWS_ACCESS_KEY_ID to be set"
         assert AWS_SECRET_ACCESS_KEY is not None, "Needs environment variable AWS_SECRET_ACCESS_KEY to be set"
 
-        if not self.filename.endswith('.json'):
+        if self.output_filename and not self.output_file.endswith('.json'):
             raise Exception("File must be converted with to_json")
         else:
             self.logger.info("Generating random filename for s3")
-            if randomize:
-                new_file_name = "{0}_{1}".format(
-                    "".join((choice(letters + digits) for _ in xrange(10))),
-                    self.filename)
-            else:
-                new_file_name = self.filename
+            path, fn = os.path.split(self.output_filename)
 
-            self.logger.info("s3 file name: %s" % (new_file_name))
+            if randomize:
+                s3_file_name = "{0}_{1}".format(
+                    "".join((choice(letters + digits) for _ in xrange(10))),
+                    fn)
+            else:
+                s3_file_name = fn
+
+            self.logger.info("s3 file name: %s" % (s3_file_name))
 
             try:
                 conn = S3Connection(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
                 bucket = conn.create_bucket('slice-rows-cache')
-                k = bucket.new_key(new_file_name)
+                k = bucket.new_key(s3_file_name)
                 self.logger.info("Created new s3 file")
             except Exception as e:
                 raise Exception(
                     "Could not open bucket / create new key {0} {1}".format(
-                        new_file_name, e))
+                        s3_file_name, e))
             k.content_type = 'application/json'
 
-            content = open(self.filename, 'r').read()
+            content = open(self.output_filename, 'r').read()
 
             try:
                 k.set_contents_from_string(content)
@@ -320,7 +326,8 @@ class MandolineCleaner():
             except Exception as e:
                 raise Exception("Could not write file to S3 {0}".format(e))
 
-            self.s3_file_name = new_file_name
+            self.s3_file_name = s3_file_name
+
 
 
 class MandolineMasher(object):
@@ -378,7 +385,7 @@ class MandolineSlice(object):
         self.sliceboard_id = None
         self.sliceboard_obj = None
         self.collection = None
-        self.logger = logging.getLogger("slice")
+        self.logger = logging.getLogger("mandoline.slice")
 
     # Tests
 
