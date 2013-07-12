@@ -323,6 +323,46 @@ class MandolineCleaner():
             self.s3_file_name = new_file_name
 
 
+class MandolineMasher(object):
+    """
+    Concatenates files together
+    """
+
+    def __init__(self):
+        self.logger = logging.getLogger("mandoline.masher")
+
+
+    def files(self, pattern):
+        assert isinstance(pattern, basestring), "Pattern must be a glob string"
+        self.collection = FileCollection(pattern)
+        self.logger.info("Matched %d files" % self.collection.length)
+        return self
+
+    def to_csv(self, output_filename, delete_headers=True):
+        """
+        Concatenates a bunch of files together
+        """
+        outf = open(output_filename, 'wb')
+        first = True
+        for f in self.collection.collection:
+            lines = open(f).readlines()
+            if first:
+                outf.writelines(lines)
+                self.logger.info("Wrote %d lines (including header) from %s to %s" % (len(lines), f, output_filename))
+            else:
+                if delete_headers:
+                    lines = lines[1:]
+                    outf.writelines(lines)
+                    self.logger.info("Wrote %d lines from %s to %s" % (len(lines), f, output_filename))
+                else:
+                    outf.writelines(lines)
+                    self.logger.info("Wrote %d lines (including header) from %s to %s" % (len(lines), f, output_filename))
+            first = False
+        self.logger.info("Complete")
+        outf.close()
+
+
+
 class MandolineSlice(object):
     """
     Talks to slice and changes slice objects
