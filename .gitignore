@@ -4,6 +4,7 @@
 *.clean
 *.json
 *.log
+
 LMC*.txt
 dist/
 build/

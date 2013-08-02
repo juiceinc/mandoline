@@ -6,6 +6,12 @@ Mandoline is a tool to prepare data files and attach data to
 to Juice Slice sliceboards.
 
 
+Installing Mandoline
+===========
+
+Install Mandoline with
+
+  sudo pip install -e git://github.com/juiceinc/mandoline.git#egg=mandoline
 
 
 The MandolineCleaner
@@ -69,6 +75,7 @@ The clean step is created by calling `.clean()` on Mandoline. This will read
 the files in and keep only the fields that you listed in `set_fields`
 
 
+
 Step 4: Post cleaning (optional)
 -----------
 
@@ -79,13 +86,16 @@ After the data has been cleaned
   process(function): Does arbitrary "stuff" to the cleaned data
   drop_field(field_name): Drops a field from the output.
 
+
 Step 5: Output
 -----------
 
 To get your data out of Mandoline, use one of the following.
 
-  to_json(): Writes data to a json file
-  to_csv(): Writes data to a csv file.
+  to_json(): Writes data to a json file. You can optionally supply a file name
+    using `to_json(new_filename)`, otherwise the filename will be the original
+    file + ".json"
+  to_csv(): Writes data to a csv file. Just like with
   to_s3_rows_cache(): Pushes data up the slice's S3 storage. This is required
     if you want to replace data on a sliceboard.
     This requires that you've called to_json() first.
@@ -94,3 +104,22 @@ To get your data out of Mandoline, use one of the following.
     that is already on slice. To use this call `to_s3_rows_cache(randomize=True)`.
 
 
+
+Controlling slice with MandolineSlice
+===========
+
+MandolineSlice lets you take control of slice.
+
+Setting up MandolineSlice to connect to a Slice server
+-----------
+
+MandolineSlice always needs the server url, username and api_key of the user
+you will be changing slices as.
+
+  MandolineSlice(url).authenticate(username, api_key)
+
+For instance,
+
+  MandolineSlice("staging.juiceslice.com").authenticate("admin2", "bdbc10df5453ac3fa040e92b65b7cb6e09e73c82")
+
+Once you have MandolineSlice, you can learn about the slices.

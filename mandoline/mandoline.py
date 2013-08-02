@@ -2,11 +2,10 @@ from collections import Iterable
 import logging
 import itertools
 import json
+import os
 
 from requests import get as http_get, put as http_put
-
 from boto.s3.connection import S3Connection
-import os
 
 from cleaners import *
 
@@ -258,7 +257,8 @@ class MandolineCleaner():
             path, _ = os.path.split(os.path.abspath(self.input_filename))
             self.output_filename = os.path.join(path, fn)
 
-        json.dump({"rows": self.rows}, open(self.output_filename, 'wb'), indent=0)
+        json.dump({"rows": self.rows}, open(self.output_filename, 'wb'),
+                  indent=0)
         self.logger.info("Wrote json file %s" % (self.output_filename))
         return self
 
@@ -329,7 +329,6 @@ class MandolineCleaner():
             self.s3_file_name = s3_file_name
 
 
-
 class MandolineMasher(object):
     """
     Concatenates files together
@@ -355,33 +354,37 @@ class MandolineMasher(object):
             lines = open(f).readlines()
             if first:
                 outf.writelines(lines)
-                self.logger.info("Wrote %d lines (including header) from %s to %s" % (len(lines), f, output_filename))
+                self.logger.info(
+                    "Wrote %d lines (including header) from %s to %s" % (
+                        len(lines), f, output_filename))
             else:
                 if delete_headers:
                     lines = lines[1:]
                     outf.writelines(lines)
-                    self.logger.info("Wrote %d lines from %s to %s" % (len(lines), f, output_filename))
+                    self.logger.info("Wrote %d lines from %s to %s" % (
+                        len(lines), f, output_filename))
                 else:
                     outf.writelines(lines)
-                    self.logger.info("Wrote %d lines (including header) from %s to %s" % (len(lines), f, output_filename))
+                    self.logger.info(
+                        "Wrote %d lines (including header) from %s to %s" % (
+                            len(lines), f, output_filename))
             first = False
         self.logger.info("Complete")
         outf.close()
-
 
 
 class MandolineSlice(object):
     """
     Talks to slice and changes slice objects
 
-    Slice('staging').sliceboard(3183).duplicate().rename_old("Copy of {sliceboard.name}")
+    MandolineSlice('staging.juiceslice.com').sliceboard(3183).duplicate().rename_old("Copy of {sliceboard.name}")
 
     """
 
-    def __init__(self, server=None):
+    def __init__(self, server_url=None):
         self.user = None
         self.api_key = None
-        self.server = server
+        self.server = server_url
         self.sliceboard_id = None
         self.sliceboard_obj = None
         self.collection = None
@@ -407,9 +410,13 @@ class MandolineSlice(object):
         return "?api_key={0.api_key}&username={0.user}".format(self)
 
     @property
-    def sliceboard_uri(self):
+    def sliceboard_detail_uri(self):
         return "http://{0.server}/api/v1/sliceboard/{0.sliceboard_id}".format(
             self)
+
+    @property
+    def sliceboard_list_uri(self):
+        return "http://{0.server}/api/v1/sliceboard/".format(self)
 
     # General commands
 
@@ -421,13 +428,36 @@ class MandolineSlice(object):
 
     # Commands related to slice
 
+    def _show_sliceboard(self, sb, full=False):
+        print "{id:4d} {title}".format(**sb)
+        if full:
+            print "\tviewers: {viewers}".format(**sb)
+            print "\teditors: {editors}".format(**sb)
+            print "\tslices: "
+            for s in sb['thinSlices']:
+                print "\t\t({type}) {title}".format(**s)
+            print
+
+
+    def show_sliceboards(self, full=False):
+        response = http_get(self.sliceboard_list_uri + self.auth_params,
+                            stream=False)
+        for sb in response.json()["objects"]:
+            self._show_sliceboard(sb, full)
+        return self
+
+    def show_sliceboard(self, sliceboard_id, full=True):
+        self.sliceboard(sliceboard_id)
+        self._show_sliceboard(self.sliceboard_obj, full)
+        return self
+
 
     def sliceboard(self, sliceboard_id):
         """
         Get a sliceboard object
         """
         self.sliceboard_id = sliceboard_id
-        response = http_get(self.sliceboard_uri + self.auth_params,
+        response = http_get(self.sliceboard_detail_uri + self.auth_params,
                             stream=False)
         self.sliceboard_obj = response.json()
         self.logger.info(str(self.sliceboard_obj['title']))
@@ -449,9 +479,17 @@ class MandolineSlice(object):
         assert new_title is not None
 
         headers = {"content-type": "application/json; charset=utf8"}
-        put_url = self.sliceboard_url + self.auth_params
+        put_url = self.sliceboard_detail_uri + self.auth_params
         data = {"title": new_title.format(self.sliceboard_obj)}
+        print data
         response = http_put(put_url, data=json.dumps(data), headers=headers)
+        print '-'*80
+        print put_url
+        print json.dumps(data)
+        print headers
+        print '-'*80
+        print "stat"
+        print response.status_code
         assert response.status_code == 202
         return self
 
@@ -461,7 +499,7 @@ class MandolineSlice(object):
         """
         if self.sliceboard_obj is None:
             raise Exception("Need a sliceboard")
-        duplicate_url = "{0.sliceboard_uri}/duplicate{0.auth_params}".format(
+        duplicate_url = "{0.sliceboard_detail_uri}/duplicate{0.auth_params}".format(
             self)
         response = http_get(duplicate_url, stream=False)
         self.duplicate_obj = response.json()
