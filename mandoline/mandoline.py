@@ -96,8 +96,9 @@ class MandolineCleaner():
     # File loaders
 
     def files(self, pattern, *validators):
-        assert isinstance(pattern, basestring), "Pattern must be a glob string"
+        assert isinstance(pattern, basestring), "Pattern must be a matching string"
         vals = [v for v in validators]
+
         self.collection = FileCollection(pattern, validators=vals)
         self.logger.info("Matched %d files" % self.collection.length)
         return self
@@ -292,7 +293,7 @@ class MandolineCleaner():
         assert AWS_ACCESS_KEY_ID is not None, "Needs environment variable AWS_ACCESS_KEY_ID to be set"
         assert AWS_SECRET_ACCESS_KEY is not None, "Needs environment variable AWS_SECRET_ACCESS_KEY to be set"
 
-        if self.output_filename and not self.output_file.endswith('.json'):
+        if self.output_filename and not self.output_filename.endswith('.json'):
             raise Exception("File must be converted with to_json")
         else:
             self.logger.info("Generating random filename for s3")
@@ -481,15 +482,7 @@ class MandolineSlice(object):
         headers = {"content-type": "application/json; charset=utf8"}
         put_url = self.sliceboard_detail_uri + self.auth_params
         data = {"title": new_title.format(self.sliceboard_obj)}
-        print data
         response = http_put(put_url, data=json.dumps(data), headers=headers)
-        print '-'*80
-        print put_url
-        print json.dumps(data)
-        print headers
-        print '-'*80
-        print "stat"
-        print response.status_code
         assert response.status_code == 202
         return self
 
