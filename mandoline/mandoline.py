@@ -4,7 +4,7 @@ import itertools
 import json
 import os
 
-from requests import get as http_get, put as http_put
+from requests import get as http_get, put as http_put, delete as http_delete
 from boto.s3.connection import S3Connection
 
 from cleaners import *
@@ -152,7 +152,7 @@ class MandolineCleaner():
         self._generate_field_metadata()
         self.input_filename = f
 
-        reader = csv.DictReader(open(self.input_filename, 'r'))
+        reader = csv.DictReader(open(self.input_filename, 'rU'))
         self.inputrows = list(reader)
         return self
 
@@ -180,12 +180,11 @@ class MandolineCleaner():
         return self
 
 
-    def drop_field(self, fn):
-        self.logger.info("Dropping field " + fn)
-        for idx, fld in enumerate(self.fields):
-            if fld.field_name == fn:
-                self.fields.pop(idx)
-                break
+    def drop_field(self, fields_to_drop):
+        if isinstance(fields_to_drop, basestring):
+            fields_to_drop = (fields_to_drop,)
+        self.logger.info("Dropping field " + str(fields_to_drop))
+        self.fields = [fld for fld in self.fields if fld.field_name not in fields_to_drop]
         self._generate_field_metadata()
         return self
 
@@ -464,7 +463,6 @@ class MandolineSlice(object):
         self.logger.info(str(self.sliceboard_obj['title']))
         assert response.status_code == 200
         return self
-        # print self.sliceboard_obj
 
     def title(self, new_title="Untitled"):
         """
@@ -485,6 +483,21 @@ class MandolineSlice(object):
         response = http_put(put_url, data=json.dumps(data), headers=headers)
         assert response.status_code == 202
         return self
+
+    def delete(self):
+        """
+        Deletes a sliceboard
+        """
+        if self.sliceboard_obj is None:
+            raise Exception("Need a sliceboard")
+        delete_url = self.sliceboard_detail_uri + self.auth_params
+        print "Deleting", delete_url
+        response = http_delete(delete_url)
+        assert response.status_code == 204
+        self.sliceboard_id = None
+        self.sliceboard_obj = None
+        return self
+
 
     def duplicate(self):
         """

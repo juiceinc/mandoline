@@ -2,7 +2,7 @@ from distutils.core import setup
 
 setup(
     name='Mandoline',
-    version='0.2.0',
+    version='0.3.0',
     author='Chris Gemignani',
     author_email='chris.gemignani@juiceanalytics.com',
     packages=['mandoline',],
