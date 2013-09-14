@@ -429,7 +429,7 @@ class MandolineSlice(object):
     # Commands related to slice
 
     def _show_sliceboard(self, sb, full=False):
-        print "{id:4d} {title}".format(**sb)
+        print "{id:4d} ".format(**sb) + sb['title']
         if full:
             print "\tviewers: {viewers}".format(**sb)
             print "\teditors: {editors}".format(**sb)
